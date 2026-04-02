@@ -1,0 +1,101 @@
+.panel,
+.list,
+.form {
+  display: grid;
+  gap: 10px;
+}
+
+.activeCard,
+.item,
+.input,
+.textarea {
+  border: var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow);
+}
+
+.activeCard,
+.item {
+  padding: 10px;
+}
+
+.sectionLabel,
+.preview {
+  font-size: 11px;
+}
+
+.sectionLabel {
+  color: var(--text-faint);
+  margin-bottom: 4px;
+}
+
+.preview {
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: start;
+}
+
+.active {
+  border-color: var(--accent);
+  box-shadow:
+    inset 3px 0 0 var(--accent),
+    var(--shadow);
+}
+
+.select,
+.delete,
+.add {
+  border: 0;
+}
+
+.select {
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.name {
+  margin-bottom: 4px;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.delete {
+  background: transparent;
+  color: var(--text-faint);
+  font-size: 11px;
+}
+
+.input,
+.textarea {
+  width: 100%;
+  padding: 9px 10px;
+  color: var(--text-primary);
+}
+
+.input {
+  min-height: 38px;
+}
+
+.textarea {
+  min-height: 82px;
+  resize: vertical;
+}
+
+.add {
+  justify-self: start;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-muted);
+  color: var(--accent);
+  box-shadow: var(--shadow);
+}

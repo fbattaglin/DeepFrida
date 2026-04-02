@@ -1,0 +1,252 @@
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px 16px;
+  min-height: 0;
+  border-right: var(--border);
+  background:
+    linear-gradient(180deg, rgba(47, 99, 216, 0.1), rgba(255, 255, 255, 0.96) 26%),
+    rgba(255, 255, 255, 0.94);
+  overflow: hidden;
+}
+
+.brand {
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+  flex-shrink: 0;
+  border: var(--border);
+  border-radius: var(--radius-lg);
+  background:
+    linear-gradient(180deg, rgba(233, 239, 252, 0.95), rgba(255, 255, 255, 0.98));
+  box-shadow: var(--shadow);
+}
+
+.logo {
+  width: 100%;
+  min-height: 210px;
+  max-height: 250px;
+  object-fit: cover;
+  border-radius: 24px;
+  box-shadow: 0 22px 44px rgba(52, 72, 110, 0.18);
+}
+
+.name {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.meta,
+.modelLabel,
+.sectionTitle,
+.itemMeta,
+.badges {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.modelCard {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  flex-shrink: 0;
+  border: var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow);
+}
+
+.select {
+  width: 100%;
+  padding: 9px 10px;
+  border: var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+
+.warmupButton {
+  padding: 9px 10px;
+  border: 1px solid #bfd0f3;
+  border-radius: var(--radius-sm);
+  background: var(--accent-muted);
+  color: var(--accent);
+  font-size: 12px;
+}
+
+.warmupButton:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.modelList {
+  display: grid;
+  gap: 6px;
+  max-height: 132px;
+  overflow-y: auto;
+  padding-right: 4px;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+}
+
+.modelRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.badges {
+  display: flex;
+  gap: 8px;
+}
+
+.loaded {
+  color: var(--accent);
+}
+
+.conversationArea {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.list {
+  display: grid;
+  flex: 1 1 auto;
+  align-content: start;
+  gap: 8px;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+}
+
+.empty {
+  padding: 18px 12px;
+  border: 1px dashed #cfd8ea;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.62);
+  color: var(--text-muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.itemRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.item {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: var(--border);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.76);
+  color: inherit;
+  text-align: left;
+}
+
+.item:hover {
+  background: var(--bg-hover);
+}
+
+.active {
+  border-color: var(--accent);
+  background: rgba(47, 99, 216, 0.08);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.itemTitle {
+  font-size: 12px;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.deleteButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  min-width: 36px;
+  border: 1px solid #d9deeb;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.9);
+  color: #7a859a;
+  box-shadow: var(--shadow);
+  transition:
+    color 140ms ease,
+    border-color 140ms ease,
+    background 140ms ease;
+}
+
+.deleteButton:hover:not(:disabled) {
+  border-color: #e2b6b6;
+  background: #fff3f3;
+  color: #b14b4b;
+}
+
+.deleteButton:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.deleteIcon {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.newButton {
+  padding: 11px 12px;
+  border: 1px solid #bfd0f3;
+  border-radius: var(--radius-md);
+  background: var(--accent-muted);
+  color: var(--accent);
+  box-shadow: var(--shadow);
+  flex-shrink: 0;
+}
+
+@media (max-height: 900px) {
+  .sidebar {
+    gap: 12px;
+    padding: 14px 12px;
+  }
+
+  .brand {
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .logo {
+    min-height: 150px;
+    max-height: 180px;
+  }
+}
+
+@media (max-height: 760px) {
+  .logo {
+    min-height: 104px;
+    max-height: 128px;
+    border-radius: 18px;
+  }
+
+  .name {
+    font-size: 18px;
+  }
+}

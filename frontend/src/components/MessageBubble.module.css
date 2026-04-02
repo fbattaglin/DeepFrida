@@ -1,0 +1,175 @@
+.userRow,
+.assistantRow {
+  display: flex;
+}
+
+.userRow {
+  justify-content: flex-end;
+}
+
+.assistantRow {
+  justify-content: flex-start;
+}
+
+.userBubble {
+  max-width: 75%;
+  padding: 12px 14px;
+  border-radius: 14px 14px 4px 14px;
+  background: linear-gradient(180deg, #eef4ff, #e4edff);
+  color: #28437b;
+  line-height: 1.7;
+  box-shadow: var(--shadow);
+  border: 1px solid #cddaf7;
+}
+
+.assistantWrap {
+  max-width: min(840px, 100%);
+}
+
+.divider {
+  height: 1px;
+  margin: 10px 0 12px;
+  background: linear-gradient(90deg, transparent, rgba(100, 122, 160, 0.4), transparent);
+}
+
+.assistantBubble {
+  padding: 14px 16px;
+  border: var(--border);
+  border-radius: 4px 14px 14px 14px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: var(--shadow);
+}
+
+.answer {
+  line-height: 1.7;
+}
+
+.streamingText {
+  white-space: pre-wrap;
+}
+
+.bubble p {
+  margin-bottom: 10px;
+}
+
+.bubble p:last-child {
+  margin-bottom: 0;
+}
+
+.bubble code {
+  background: #1e1e1e;
+  border: 1px solid #2a2a2a;
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-family: monospace;
+  font-size: 12px;
+  color: #c8c8c8;
+}
+
+.bubble pre {
+  background: #141414;
+  border: 1px solid #222;
+  border-radius: 6px;
+  padding: 12px 14px;
+  overflow-x: auto;
+  margin: 10px 0;
+}
+
+.bubble pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 12px;
+  color: #c8c8c8;
+}
+
+.bubble h1,
+.bubble h2,
+.bubble h3 {
+  color: #1b2430;
+  font-weight: 500;
+  margin: 14px 0 6px;
+}
+
+.bubble h1 {
+  font-size: 16px;
+}
+
+.bubble h2 {
+  font-size: 14px;
+}
+
+.bubble h3 {
+  font-size: 13px;
+}
+
+.bubble ul,
+.bubble ol {
+  padding-left: 18px;
+  margin: 8px 0;
+}
+
+.bubble li {
+  margin-bottom: 4px;
+  line-height: 1.6;
+}
+
+.bubble strong {
+  color: #1b2430;
+  font-weight: 600;
+}
+
+.bubble em {
+  color: #6e7888;
+}
+
+.bubble blockquote {
+  border-left: 2px solid #d2d8e3;
+  margin: 8px 0;
+  padding: 4px 12px;
+  color: #666;
+  font-style: italic;
+}
+
+.bubble a {
+  color: #2f63d8;
+  text-decoration: none;
+}
+
+.bubble a:hover {
+  text-decoration: underline;
+}
+
+.bubble hr {
+  border: none;
+  border-top: 1px solid #d8dfe9;
+  margin: 12px 0;
+}
+
+.metrics {
+  margin-top: 6px;
+  color: var(--text-faint);
+  font-size: 11px;
+}
+
+.cursor {
+  display: inline-block;
+  width: 2px;
+  height: 13px;
+  margin-left: 4px;
+  vertical-align: middle;
+  background: var(--accent);
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+
+  50%,
+  100% {
+    opacity: 0;
+  }
+}

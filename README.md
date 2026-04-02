@@ -1,79 +1,148 @@
-# AI Lab — Local LLM Inference
+# DeepFrida
 
-**Stack:** Mac Mini M4 Pro · 24 GB unified memory · Ollama 0.18.2 · Python 3.12
+DeepFrida is a self-contained local LLM chat application for Ollama, built for a Mac Mini M4 Pro with 24 GB unified memory. It combines a FastAPI backend with a React + Vite + TypeScript frontend, stores application state in SQLite, and streams model output live with separate handling for reasoning blocks.
 
----
+## Features
 
-## Quickstart
+- multi-conversation chat UI
+- Ollama model listing and loaded-model visibility
+- model warmup endpoint
+- streaming chat over SSE
+- separate `<think>...</think>` reasoning display and storage
+- SQLite persistence for conversations, messages, and prompt presets
+- live metrics panel for RAM, TTFT, tok/s, and loaded-model state
+- DeepFrida logo integrated into the main app branding
+
+## Structure
+
+```text
+DeepFrida/
+  backend/        FastAPI app, DB layer, API routes
+  frontend/       Vite React TypeScript UI
+  ollama_client/  copied local Ollama helper package
+  assets/         source logo and brand assets
+  start.sh        launches backend and frontend together
+  deepfrida.db    SQLite database created on first run
+```
+
+## Setup
+
+Python:
 
 ```bash
-cd ~/ai-lab
-source .venv/bin/activate
-
-# Interactive REPL
-python repl.py
-python repl.py --model deepseek-r1:14b --temperature 0.6 --ctx 2048
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
 ```
 
-**REPL commands:**
+Frontend:
 
-| Command | Effect |
-|---------|--------|
-| `/reset` | Clear history, keep system prompt |
-| `/stats` | Token budget and current options |
-| `/set temperature 0.3` | Change any parameter live |
-| `/system <text>` | Set system prompt (clears history) |
-| `/model <name>` | Switch model mid-session |
-| `/quit` | Exit |
-
----
-
-## Overview
-
-A structured Python client for the [Ollama](https://ollama.com) REST API — built as the foundation for benchmarking, RAG pipelines, and agentic workflows.
-
-### `ollama_client` package
-
-```python
-from ollama_client import stream_generate, generate_with_stats, ChatSession
-
-# Streaming generation
-for tok in stream_generate("Explain GGUF format in one paragraph.", temperature=0):
-    print(tok, end="", flush=True)
-
-# Structured output with TTFT and tok/s
-result = generate_with_stats("How many r's in strawberry?")
-print(result["answer"])
-print(f"{result['tok_per_sec']} tok/s | TTFT {result['ttft_ms']}ms")
-
-# Multi-turn chat (manages history automatically)
-session = ChatSession(system="You are a terse MLOps engineer.")
-session.chat("What is the KV cache?")
-session.chat("How does it grow with context length?")
+```bash
+cd frontend
+npm install
 ```
 
-### Key design points
+The `ollama_client` package is copied into this project and used locally. It is not installed from pip and should not reference the original external ai-lab path at runtime.
 
-- **`/api/generate`** — raw prompt, full control, used for benchmarking
-- **`/api/chat`** — messages array with automatic chat-template formatting, used for conversation
-- **Streaming (NDJSON)** — tokens arrive one per line; enables true TTFT measurement
-- **`ChatSession`** — Ollama is stateless; the client maintains and replays full history on every turn
-- **`warmup()`** — forces model into unified memory before benchmarking to separate cold-load cost from inference latency
+## Start
 
-### Project layout
+Run both services:
 
-```
-ai-lab/
-├── ollama_client/      # reusable client package
-│   ├── config.py       # base URL, defaults
-│   ├── generate.py     # stream_generate, generate_with_stats
-│   ├── chat.py         # ChatSession
-│   └── models.py       # list_models, is_model_loaded, warmup
-├── repl.py             # interactive REPL
-├── benchmark/          # Module 7 harness
-└── notebooks/
+```bash
+./start.sh
 ```
 
----
+URLs:
 
-*Modules: [1 Inference Stack] [2 Unified Memory] [3 Run R1 14B] [4 Python Client] [5 Parameters] [6 Local vs API] [7 Benchmark Harness]*
+- Frontend: [http://localhost:5173](http://localhost:5173)
+- Backend: [http://localhost:8000](http://localhost:8000)
+
+Run backend only:
+
+```bash
+cd backend
+../.venv/bin/python3 -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+Run frontend only:
+
+```bash
+cd frontend
+npm run dev
+```
+
+## API
+
+Health:
+
+- `GET /api/health`
+
+Conversations:
+
+- `GET /api/conversations`
+- `POST /api/conversations`
+- `GET /api/conversations/{id}`
+- `PATCH /api/conversations/{id}`
+- `DELETE /api/conversations/{id}`
+
+Models:
+
+- `GET /api/models`
+- `GET /api/models/loaded`
+- `POST /api/models/warmup`
+
+Metrics:
+
+- `GET /api/metrics`
+
+Presets:
+
+- `GET /api/presets`
+- `POST /api/presets`
+- `DELETE /api/presets/{id}`
+
+Chat:
+
+- `POST /api/chat`
+- response type: `text/event-stream`
+
+## SSE Protocol
+
+The chat stream emits events like:
+
+```text
+data: {"type":"token","content":"..."}
+data: {"type":"think","content":"..."}
+data: {"type":"metrics","ttft_ms":41.0,"tok_per_sec":38.2}
+data: {"type":"done","total_tokens":187}
+data: {"type":"error","message":"..."}
+```
+
+Streaming behavior:
+
+- user message is saved immediately
+- assistant answer tokens stream incrementally
+- reasoning inside `<think>...</think>` streams separately as `type="think"`
+- final assistant answer is stored without raw think tags
+- final message metrics are stored with the assistant message
+
+## Persistence
+
+SQLite file:
+
+```text
+deepfrida.db
+```
+
+Persisted data:
+
+- conversations
+- messages
+- presets
+
+No browser localStorage is used for app persistence.
+
+## Notes
+
+- Ollama must be reachable at `http://localhost:11434`
+- backend async HTTP calls use `httpx.AsyncClient`
+- frontend styling uses CSS modules and inline SVG only

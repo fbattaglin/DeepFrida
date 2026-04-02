@@ -1,10 +1,9 @@
-# Python-generated files
+.venv/
 __pycache__/
-*.py[oc]
-build/
-dist/
-wheels/
-*.egg-info
-
-# Virtual environments
-.venv
+*.pyc
+deepfrida.db
+node_modules/
+frontend/node_modules/
+frontend/dist/
+.env
+*.DS_Store

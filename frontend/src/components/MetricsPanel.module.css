@@ -1,0 +1,78 @@
+.panel {
+  display: grid;
+  gap: 12px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.card {
+  padding: 10px;
+  border: var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow);
+}
+
+.value {
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.label,
+.memoryMeta {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.memoryRow {
+  padding: 10px;
+  border: var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow);
+}
+
+.memoryMeta {
+  display: flex;
+  justify-content: space-between;
+}
+
+.bar {
+  height: 6px;
+  margin-top: 6px;
+  border-radius: 999px;
+  background: #e7edf7;
+  overflow: hidden;
+}
+
+.fill {
+  height: 100%;
+}
+
+.good {
+  color: var(--green);
+  background: var(--green);
+}
+
+.warn {
+  color: var(--amber);
+  background: var(--amber);
+}
+
+.bad {
+  color: var(--red);
+  background: var(--red);
+}
+
+.card .good,
+.card .warn,
+.card .bad,
+.value.good,
+.value.warn,
+.value.bad {
+  background: transparent;
+}
