@@ -3,6 +3,7 @@ export interface Conversation {
   title: string
   model: string
   system_prompt: string
+  prompt_revision?: number
   created_at: string
   updated_at: string
   turn_count?: number
@@ -15,6 +16,7 @@ export interface Message {
   role: 'user' | 'assistant'
   content: string
   think_content: string
+  prompt_revision?: number
   created_at: string
   ttft_ms?: number | null
   tok_per_sec?: number | null

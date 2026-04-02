@@ -51,7 +51,7 @@ DeepFrida/
 
 ## Prompt Behavior
 
-System prompts are stored per conversation. Selecting a preset updates the current conversation and applies to the next reply, but previous user and assistant turns in that same conversation still remain part of the model context. If you want the prompt to behave as a clean behavioral contract with no prior turns competing against it, start a fresh conversation using the same preset.
+System prompts are stored per conversation. When the prompt changes on a conversation with history, DeepFrida starts a new prompt scope for future generations: earlier turns remain visible in the UI and database, but only messages from the current prompt scope are sent back to the model. If you want an even cleaner boundary, use `New chat with this prompt`.
 
 ## Setup
 
@@ -176,3 +176,4 @@ SQLite may also create `deepfrida.db-wal` and `deepfrida.db-shm` while the app i
 - backend async calls use `httpx.AsyncClient`
 - no browser `localStorage` is used for app state persistence
 - Python sandbox execution happens in the browser, not in the backend
+- archived exploratory lab material lives under `docs/archive/`

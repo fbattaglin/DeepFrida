@@ -54,8 +54,22 @@ class OllamaAsyncClient:
     async def is_model_loaded(self, model: str) -> bool:
         payload = await self.loaded_models()
         running = payload.get("models", [])
-        model_prefix = model.split(":")[0]
-        return any((entry.get("name") or "").startswith(model_prefix) for entry in running)
+        requested = model.strip()
+        requested_base = requested.split(":", 1)[0]
+
+        for entry in running:
+            candidates = {
+                str(entry.get("name") or "").strip(),
+                str(entry.get("model") or "").strip(),
+            }
+            candidates.discard("")
+            if requested in candidates:
+                return True
+
+            if ":" not in requested and any(candidate.split(":", 1)[0] == requested_base for candidate in candidates):
+                return True
+
+        return False
 
     async def warmup(self, model: str) -> float:
         started_at = time.perf_counter()

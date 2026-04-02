@@ -35,7 +35,8 @@
 
 .scope,
 .promptName,
-.warning {
+.warning,
+.policyNote {
   font-size: 10px;
 }
 
@@ -68,6 +69,12 @@
 .warning {
   margin-top: 8px;
   color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.policyNote {
+  margin-top: 8px;
+  color: var(--text-faint);
   line-height: 1.5;
 }
 

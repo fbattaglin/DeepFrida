@@ -64,10 +64,15 @@ export function PromptLibrary({
               ? 'Applied to next reply'
               : 'No system prompt active'}
         </div>
+        <div className={styles.policyNote}>
+          DeepFrida also enforces a global language policy: final replies stay in English unless
+          translation or language analysis is explicitly requested.
+        </div>
         {activePrompt && activeTurnCount > 0 ? (
           <div className={styles.warning}>
             This conversation already has {activeTurnCount} stored message
-            {activeTurnCount === 1 ? '' : 's'}. Earlier turns still influence future replies.
+            {activeTurnCount === 1 ? '' : 's'}. Changing the prompt starts a new prompt scope for
+            future replies, so earlier turns stay visible but stop steering the next generations.
           </div>
         ) : null}
         {activePrompt ? (

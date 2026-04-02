@@ -62,6 +62,38 @@ export function ChatWindow({
     }
   }
 
+  function handleExport() {
+    if (messages.length === 0) {
+      return
+    }
+
+    const exported = messages
+      .map((message) => {
+        if (message.role === 'assistant' && message.think_content.trim()) {
+          return [
+            `[${message.role.toUpperCase()}]`,
+            `[Reasoning]`,
+            message.think_content,
+            '',
+            `[Answer]`,
+            message.content,
+          ].join('\n')
+        }
+
+        return [`[${message.role.toUpperCase()}]`, message.content].join('\n')
+      })
+      .join('\n\n---\n\n')
+
+    const safeTitle = title.trim().replace(/[\\/:*?"<>|]+/g, '-')
+    const blob = new Blob([exported], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${safeTitle || 'deepfrida-conversation'}.txt`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <section className={styles.window}>
       <header className={styles.header}>
@@ -85,10 +117,21 @@ export function ChatWindow({
           </button>
         )}
         <div className={styles.actions}>
-          <button type="button" className={styles.ghostButton}>
+          <button
+            type="button"
+            className={`${styles.ghostButton} ${styles.disabledButton}`}
+            disabled
+            title="Conversation branching is not available yet"
+          >
             Branch
           </button>
-          <button type="button" className={styles.ghostButton}>
+          <button
+            type="button"
+            className={styles.ghostButton}
+            onClick={handleExport}
+            disabled={isStreaming || messages.length === 0}
+            title={messages.length === 0 ? 'No messages to export' : 'Export conversation as text'}
+          >
             Export
           </button>
         </div>

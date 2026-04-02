@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS conversations (
     title TEXT NOT NULL,
     model TEXT NOT NULL,
     system_prompt TEXT DEFAULT '',
+    prompt_revision INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
@@ -47,6 +48,7 @@ CREATE TABLE IF NOT EXISTS messages (
     role TEXT NOT NULL,
     content TEXT NOT NULL,
     think_content TEXT DEFAULT '',
+    prompt_revision INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL,
     ttft_ms REAL,
     tok_per_sec REAL,
@@ -194,6 +196,28 @@ async def _seed_default_presets(connection: aiosqlite.Connection) -> None:
             )
 
 
+async def _column_exists(
+    connection: aiosqlite.Connection,
+    table_name: str,
+    column_name: str,
+) -> bool:
+    cursor = await connection.execute(f"PRAGMA table_info({table_name})")
+    rows = await cursor.fetchall()
+    return any(row["name"] == column_name for row in rows)
+
+
+async def _ensure_schema_migrations(connection: aiosqlite.Connection) -> None:
+    if not await _column_exists(connection, "conversations", "prompt_revision"):
+        await connection.execute(
+            "ALTER TABLE conversations ADD COLUMN prompt_revision INTEGER NOT NULL DEFAULT 0"
+        )
+
+    if not await _column_exists(connection, "messages", "prompt_revision"):
+        await connection.execute(
+            "ALTER TABLE messages ADD COLUMN prompt_revision INTEGER NOT NULL DEFAULT 0"
+        )
+
+
 async def _fetch_messages(
     connection: aiosqlite.Connection,
     conversation_id: str,
@@ -244,6 +268,7 @@ async def init_db() -> None:
             await bootstrap.execute("PRAGMA auto_vacuum = INCREMENTAL")
 
         await bootstrap.executescript(SCHEMA)
+        await _ensure_schema_migrations(bootstrap)
         await _seed_default_presets(bootstrap)
         await bootstrap.commit()
 
@@ -289,14 +314,17 @@ async def create_conversation(
     system_prompt: str = "",
 ) -> dict[str, Any]:
     timestamp = utc_now()
+    prompt_revision = 0
 
     async with _connection() as connection:
         await connection.execute(
             """
-            INSERT INTO conversations (id, title, model, system_prompt, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO conversations (
+                id, title, model, system_prompt, prompt_revision, created_at, updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
-            (conversation_id, title, model, system_prompt, timestamp, timestamp),
+            (conversation_id, title, model, system_prompt, prompt_revision, timestamp, timestamp),
         )
         await connection.commit()
 
@@ -305,6 +333,7 @@ async def create_conversation(
         "title": title,
         "model": model,
         "system_prompt": system_prompt,
+        "prompt_revision": prompt_revision,
         "created_at": timestamp,
         "updated_at": timestamp,
         "turn_count": 0,
@@ -330,14 +359,16 @@ async def update_conversation(
         next_title = title if title is not None else current["title"]
         next_prompt = system_prompt if system_prompt is not None else current["system_prompt"]
         next_model = model if model is not None else current["model"]
+        prompt_changed = system_prompt is not None and next_prompt != current["system_prompt"]
+        next_prompt_revision = current["prompt_revision"] + 1 if prompt_changed else current["prompt_revision"]
 
         await connection.execute(
             """
             UPDATE conversations
-            SET title = ?, model = ?, system_prompt = ?, updated_at = ?
+            SET title = ?, model = ?, system_prompt = ?, prompt_revision = ?, updated_at = ?
             WHERE id = ?
             """,
-            (next_title, next_model, next_prompt, utc_now(), conversation_id),
+            (next_title, next_model, next_prompt, next_prompt_revision, utc_now(), conversation_id),
         )
         await connection.commit()
 
@@ -378,6 +409,7 @@ async def add_message(
     role: str,
     content: str,
     think_content: str = "",
+    prompt_revision: int = 0,
     ttft_ms: float | None = None,
     tok_per_sec: float | None = None,
     total_tokens: int | None = None,
@@ -388,10 +420,10 @@ async def add_message(
         await connection.execute(
             """
             INSERT INTO messages (
-                id, conversation_id, role, content, think_content,
+                id, conversation_id, role, content, think_content, prompt_revision,
                 created_at, ttft_ms, tok_per_sec, total_tokens
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 message_id,
@@ -399,6 +431,7 @@ async def add_message(
                 role,
                 content,
                 think_content,
+                prompt_revision,
                 created_at,
                 ttft_ms,
                 tok_per_sec,
@@ -413,6 +446,7 @@ async def add_message(
         "role": role,
         "content": content,
         "think_content": think_content,
+        "prompt_revision": prompt_revision,
         "created_at": created_at,
         "ttft_ms": ttft_ms,
         "tok_per_sec": tok_per_sec,

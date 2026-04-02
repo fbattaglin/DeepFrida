@@ -47,23 +47,40 @@ class ThinkStreamParser:
 
     def feed_content(self, text: str) -> list[StreamFragment]:
         emitted: list[StreamFragment] = []
-        for char in text:
-            if self._tag_buffer or char == "<":
-                self._tag_buffer += char
+        position = 0
+
+        while position < len(text):
+            if self._tag_buffer:
+                self._tag_buffer += text[position]
+                position += 1
+
                 if self._tag_buffer == THINK_OPEN:
                     self._in_think = True
                     self._tag_buffer = ""
                     continue
+
                 if self._tag_buffer == THINK_CLOSE:
                     self._in_think = False
                     self._tag_buffer = ""
                     continue
+
                 emitted.extend(self._drain_non_tag_prefix())
                 continue
 
-            fragment = self._append(char)
-            if fragment is not None:
-                emitted.append(fragment)
+            tag_start = text.find("<", position)
+            if tag_start == -1:
+                fragment = self._append(text[position:])
+                if fragment is not None:
+                    emitted.append(fragment)
+                break
+
+            if tag_start > position:
+                fragment = self._append(text[position:tag_start])
+                if fragment is not None:
+                    emitted.append(fragment)
+
+            self._tag_buffer = "<"
+            position = tag_start + 1
         return emitted
 
     def flush(self) -> list[StreamFragment]:

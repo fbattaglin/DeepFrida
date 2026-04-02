@@ -364,9 +364,11 @@ export default function App() {
       patchConversationState(activeConversation.id, updated)
       const successMessage = nextPrompt
         ? hasExistingMessages
-          ? 'System prompt applied. Earlier turns still remain in context.'
+          ? 'System prompt applied. Future replies now use a fresh prompt scope.'
           : 'System prompt applied to this conversation'
-        : 'System prompt cleared'
+        : hasExistingMessages
+          ? 'System prompt cleared. Future replies now use a fresh prompt scope.'
+          : 'System prompt cleared'
       setNotice(successMessage)
       window.setTimeout(() => setNotice((previous) => (previous === successMessage ? null : previous)), 2200)
     } catch (promptError) {

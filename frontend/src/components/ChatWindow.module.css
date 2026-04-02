@@ -56,6 +56,21 @@
   color: var(--text-muted);
   font-size: 11px;
   box-shadow: var(--shadow);
+  transition: background 140ms ease, color 140ms ease, opacity 140ms ease;
+}
+
+.ghostButton:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.ghostButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.disabledButton {
+  color: var(--text-faint);
 }
 
 .messages {
