@@ -1,0 +1,157 @@
+.shell {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px 12px 0 0;
+  background: color-mix(in srgb, var(--bg-surface) 88%, transparent);
+}
+
+.language {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.actionButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 12px;
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    color 140ms ease,
+    transform 140ms ease;
+}
+
+.actionButton:hover:enabled {
+  border-color: color-mix(in srgb, var(--accent) 36%, white);
+  background: color-mix(in srgb, var(--accent-muted) 72%, white);
+  color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.actionButton:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.icon {
+  width: 14px;
+  height: 14px;
+}
+
+.codeSurface {
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  border-top: 0;
+  border-radius: 0 0 12px 12px;
+  background: #10141b;
+}
+
+.codeSurface :global(pre) {
+  margin: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+
+.codeSurface :global(code) {
+  font-family: "SF Mono", "Menlo", monospace !important;
+  font-size: 12px !important;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--accent);
+  animation: pulse 1s ease-in-out infinite;
+}
+
+.output {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--bg-surface) 90%, transparent);
+}
+
+.outputHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.outputBody,
+.errorBody {
+  margin: 0;
+  padding: 12px;
+  border-radius: 10px;
+  overflow-x: auto;
+  font-family: "SF Mono", "Menlo", monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.outputBody {
+  background: #10141b;
+  color: #dce7ff;
+}
+
+.errorBody {
+  background: #fff4f4;
+  color: #a33c3c;
+  border: 1px solid color-mix(in srgb, var(--red) 24%, white);
+}
+
+.emptyOutput {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}

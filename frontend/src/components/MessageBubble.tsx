@@ -1,7 +1,7 @@
-import { useMemo } from 'react'
-import ReactMarkdown from 'react-markdown'
+import { memo, useMemo } from 'react'
 
 import type { Message } from '../types'
+import { MarkdownRenderer } from './markdown/MarkdownRenderer'
 import { ThinkBlock } from './ThinkBlock'
 import styles from './MessageBubble.module.css'
 
@@ -15,13 +15,13 @@ function thinkTokens(content: string) {
   return content.trim() ? content.trim().split(/\s+/).length : 0
 }
 
-export function MessageBubble({
+export const MessageBubble = memo(function MessageBubble({
   message,
   isStreaming = false,
   thinkDone = false,
 }: MessageBubbleProps) {
   const renderedMarkdown = useMemo(
-    () => <ReactMarkdown>{message.content}</ReactMarkdown>,
+    () => <MarkdownRenderer content={message.content} />,
     [message.content],
   )
 
@@ -74,4 +74,4 @@ export function MessageBubble({
       </div>
     </div>
   )
-}
+})

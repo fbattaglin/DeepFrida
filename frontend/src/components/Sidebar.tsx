@@ -1,3 +1,5 @@
+import { memo } from 'react'
+
 import type { Conversation, ModelInfo } from '../types'
 import styles from './Sidebar.module.css'
 
@@ -23,7 +25,7 @@ function shortSize(size?: number) {
   return `${(size / 1_000_000_000).toFixed(1)}B`
 }
 
-export function Sidebar({
+export const Sidebar = memo(function Sidebar({
   conversations,
   activeConversationId,
   models,
@@ -124,4 +126,4 @@ export function Sidebar({
       </button>
     </aside>
   )
-}
+})

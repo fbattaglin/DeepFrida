@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-import math
-import subprocess
+import asyncio
+import time
+from typing import Any
 
 from fastapi import APIRouter
 
 from config import DEFAULT_MODEL
-from ollama_client import is_model_loaded
+from services.ollama_async import OllamaResponseError, OllamaUnavailableError, get_ollama_client
 
 router = APIRouter(prefix="/metrics", tags=["metrics"])
 
@@ -16,6 +17,9 @@ LATEST_METRICS: dict[str, float | None | str] = {
     "model": DEFAULT_MODEL,
 }
 
+_MEMORY_SAMPLE: dict[str, float] = {"value": 0.0, "captured_at": 0.0}
+_MEMORY_LOCK = asyncio.Lock()
+
 
 def set_latest_metrics(*, model: str, tok_per_sec: float | None, ttft_ms: float | None) -> None:
     LATEST_METRICS["model"] = model
@@ -23,8 +27,7 @@ def set_latest_metrics(*, model: str, tok_per_sec: float | None, ttft_ms: float 
     LATEST_METRICS["ttft_ms"] = ttft_ms
 
 
-def _parse_vm_stat() -> float:
-    output = subprocess.check_output(["vm_stat"], text=True)
+def _parse_vm_stat_output(output: str) -> float:
     page_size = 4096
     pages: dict[str, int] = {}
 
@@ -38,6 +41,7 @@ def _parse_vm_stat() -> float:
 
         if ":" not in line:
             continue
+
         name, value = line.split(":", 1)
         clean_value = value.strip().rstrip(".").replace(".", "")
         if clean_value.isdigit():
@@ -48,19 +52,41 @@ def _parse_vm_stat() -> float:
         + pages.get("Pages wired down", 0)
         + pages.get("Pages occupied by compressor", 0)
     )
-    return round((used_pages * page_size) / (1024 ** 3), 2)
+    return round((used_pages * page_size) / (1024**3), 2)
+
+
+async def _sample_memory_gb() -> float:
+    now = time.monotonic()
+    if now - _MEMORY_SAMPLE["captured_at"] < 1.0:
+        return _MEMORY_SAMPLE["value"]
+
+    async with _MEMORY_LOCK:
+        now = time.monotonic()
+        if now - _MEMORY_SAMPLE["captured_at"] < 1.0:
+            return _MEMORY_SAMPLE["value"]
+
+        process = await asyncio.create_subprocess_exec(
+            "vm_stat",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, _ = await process.communicate()
+        memory_gb = _parse_vm_stat_output(stdout.decode())
+        _MEMORY_SAMPLE["value"] = memory_gb
+        _MEMORY_SAMPLE["captured_at"] = now
+        return memory_gb
 
 
 @router.get("")
-async def get_metrics() -> dict:
+async def get_metrics() -> dict[str, Any]:
     model = str(LATEST_METRICS["model"] or DEFAULT_MODEL)
     try:
-        model_loaded = is_model_loaded(model)
-    except RuntimeError:
+        model_loaded = await get_ollama_client().is_model_loaded(model)
+    except (OllamaUnavailableError, OllamaResponseError):
         model_loaded = False
 
     return {
-        "ram_used_gb": _parse_vm_stat(),
+        "ram_used_gb": await _sample_memory_gb(),
         "ram_total_gb": 24,
         "tok_per_sec": (
             None

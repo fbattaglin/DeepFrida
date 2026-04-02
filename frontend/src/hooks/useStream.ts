@@ -1,13 +1,22 @@
-import { useState } from 'react'
+import { startTransition, useCallback, useEffect, useRef, useState } from 'react'
 
 import type { InferenceParams, SSEEvent } from '../types'
 
 const API_BASE = '/api'
+const MAX_CONNECT_RETRIES = 1
 
 interface StreamMetrics {
   ttft_ms: number | null
   tok_per_sec: number | null
   total_tokens: number | null
+}
+
+interface StreamState {
+  isStreaming: boolean
+  currentContent: string
+  currentThink: string
+  thinkDone: boolean
+  metrics: StreamMetrics
 }
 
 interface SendMessageArgs {
@@ -18,46 +27,121 @@ interface SendMessageArgs {
   params: InferenceParams
 }
 
-export function useStream() {
-  const [isStreaming, setIsStreaming] = useState(false)
-  const [currentContent, setCurrentContent] = useState('')
-  const [currentThink, setCurrentThink] = useState('')
-  const [thinkDone, setThinkDone] = useState(false)
-  const [metrics, setMetrics] = useState<StreamMetrics>({
+const INITIAL_STATE: StreamState = {
+  isStreaming: false,
+  currentContent: '',
+  currentThink: '',
+  thinkDone: false,
+  metrics: {
     ttft_ms: null,
     tok_per_sec: null,
     total_tokens: null,
+  },
+}
+
+function cloneState(state: StreamState): StreamState {
+  return {
+    ...state,
+    metrics: {
+      ...state.metrics,
+    },
+  }
+}
+
+function parseEventBlock(block: string): SSEEvent | null {
+  const payloadLines = block
+    .split('\n')
+    .filter((line) => line.startsWith('data: '))
+    .map((line) => line.slice(6))
+
+  if (payloadLines.length === 0) {
+    return null
+  }
+
+  return JSON.parse(payloadLines.join('\n')) as SSEEvent
+}
+
+function isRetryableStreamError(error: unknown): boolean {
+  return error instanceof TypeError
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms)
   })
+}
 
-  async function sendMessage({
-    conversationId,
-    message,
-    model,
-    systemPrompt,
-    params,
-  }: SendMessageArgs) {
-    setIsStreaming(true)
-    setCurrentContent('')
-    setCurrentThink('')
-    setThinkDone(false)
-    setMetrics({ ttft_ms: null, tok_per_sec: null, total_tokens: null })
+export function useStream() {
+  const [state, setState] = useState<StreamState>(INITIAL_STATE)
+  const pendingRef = useRef<StreamState>(cloneState(INITIAL_STATE))
+  const frameRef = useRef<number | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
 
+  const flushState = useCallback((immediate = false) => {
+    const commit = () => {
+      startTransition(() => {
+        setState(cloneState(pendingRef.current))
+      })
+    }
+
+    if (immediate) {
+      if (frameRef.current !== null) {
+        window.cancelAnimationFrame(frameRef.current)
+        frameRef.current = null
+      }
+      commit()
+      return
+    }
+
+    if (frameRef.current !== null) {
+      return
+    }
+
+    frameRef.current = window.requestAnimationFrame(() => {
+      frameRef.current = null
+      commit()
+    })
+  }, [])
+
+  const mutatePending = useCallback(
+    (mutator: (draft: StreamState) => void, immediate = false) => {
+      mutator(pendingRef.current)
+      flushState(immediate)
+    },
+    [flushState],
+  )
+
+  const resetStream = useCallback(() => {
+    pendingRef.current = cloneState(INITIAL_STATE)
+    flushState(true)
+  }, [flushState])
+
+  useEffect(() => {
+    return () => {
+      if (frameRef.current !== null) {
+        window.cancelAnimationFrame(frameRef.current)
+      }
+      abortRef.current?.abort()
+    }
+  }, [])
+
+  async function streamOnce(args: SendMessageArgs, controller: AbortController) {
     const response = await fetch(`${API_BASE}/chat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        conversation_id: conversationId,
-        message,
-        model,
-        system_prompt: systemPrompt,
-        options: params,
+        conversation_id: args.conversationId,
+        message: args.message,
+        model: args.model,
+        system_prompt: args.systemPrompt,
+        options: args.params,
       }),
+      signal: controller.signal,
     })
 
     if (!response.ok || !response.body) {
-      setIsStreaming(false)
       let message = `Chat request failed with status ${response.status}`
       try {
         const data = (await response.json()) as { error?: string; detail?: string | { error?: string } }
@@ -69,7 +153,7 @@ export function useStream() {
           message = data.detail.error
         }
       } catch {
-        // Ignore JSON parsing failures and keep the default message.
+        // Keep the default status-based message when the payload is not JSON.
       }
       throw new Error(message)
     }
@@ -77,70 +161,129 @@ export function useStream() {
     const reader = response.body.getReader()
     const decoder = new TextDecoder()
     let buffer = ''
+    let receivedPayload = false
 
-    try {
-      while (true) {
-        const { value, done } = await reader.read()
-        if (done) break
+    while (true) {
+      const { value, done } = await reader.read()
+      if (done) {
+        break
+      }
 
-        buffer += decoder.decode(value, { stream: true })
-        const parts = buffer.split('\n\n')
-        buffer = parts.pop() ?? ''
+      buffer += decoder.decode(value, { stream: true })
+      const parts = buffer.split('\n\n')
+      buffer = parts.pop() ?? ''
 
-        for (const part of parts) {
-          const line = part
-            .split('\n')
-            .find((candidate) => candidate.startsWith('data: '))
+      for (const part of parts) {
+        const payload = parseEventBlock(part)
+        if (!payload) {
+          continue
+        }
 
-          if (!line) continue
+        receivedPayload = true
 
-          const payload = JSON.parse(line.slice(6)) as SSEEvent
-          if (payload.type === 'token') {
-            setThinkDone(true)
-            setCurrentContent((previous) => previous + payload.content)
-          } else if (payload.type === 'think') {
-            setCurrentThink((previous) => previous + payload.content)
-          } else if (payload.type === 'metrics') {
-            setMetrics((previous) => ({
-              ...previous,
-              ttft_ms: payload.ttft_ms,
-              tok_per_sec: payload.tok_per_sec,
-            }))
-          } else if (payload.type === 'done') {
-            setMetrics((previous) => ({
-              ...previous,
-              total_tokens: payload.total_tokens,
-            }))
-          } else if (payload.type === 'error') {
-            throw new Error(payload.message)
-          }
+        if (payload.type === 'token') {
+          mutatePending((draft) => {
+            draft.thinkDone = true
+            draft.currentContent += payload.content
+          })
+        } else if (payload.type === 'think') {
+          mutatePending((draft) => {
+            draft.currentThink += payload.content
+          })
+        } else if (payload.type === 'metrics') {
+          mutatePending((draft) => {
+            draft.metrics.ttft_ms = payload.ttft_ms
+            draft.metrics.tok_per_sec = payload.tok_per_sec
+          })
+        } else if (payload.type === 'done') {
+          mutatePending(
+            (draft) => {
+              draft.metrics.total_tokens = payload.total_tokens
+            },
+            true,
+          )
+        } else if (payload.type === 'error') {
+          throw new Error(payload.message)
         }
       }
-    } finally {
-      setIsStreaming(false)
     }
 
-    return {
-      content: currentContent,
-      think: currentThink,
-      metrics,
+    if (buffer.trim()) {
+      const payload = parseEventBlock(buffer)
+      if (payload?.type === 'token') {
+        mutatePending((draft) => {
+          draft.thinkDone = true
+          draft.currentContent += payload.content
+        }, true)
+      } else if (payload?.type === 'think') {
+        mutatePending((draft) => {
+          draft.currentThink += payload.content
+        }, true)
+      } else if (payload?.type === 'metrics') {
+        mutatePending((draft) => {
+          draft.metrics.ttft_ms = payload.ttft_ms
+          draft.metrics.tok_per_sec = payload.tok_per_sec
+        }, true)
+      } else if (payload?.type === 'done') {
+        mutatePending((draft) => {
+          draft.metrics.total_tokens = payload.total_tokens
+        }, true)
+      } else if (payload?.type === 'error') {
+        throw new Error(payload.message)
+      }
     }
+
+    return receivedPayload
   }
 
-  function resetStream() {
-    setCurrentContent('')
-    setCurrentThink('')
-    setThinkDone(false)
-    setMetrics({ ttft_ms: null, tok_per_sec: null, total_tokens: null })
-    setIsStreaming(false)
+  async function sendMessage(args: SendMessageArgs) {
+    abortRef.current?.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
+
+    pendingRef.current = cloneState({
+      ...INITIAL_STATE,
+      isStreaming: true,
+    })
+    flushState(true)
+
+    let receivedPayload = false
+
+    try {
+      for (let attempt = 0; attempt <= MAX_CONNECT_RETRIES; attempt += 1) {
+        try {
+          receivedPayload = await streamOnce(args, controller)
+          break
+        } catch (error) {
+          if (controller.signal.aborted) {
+            throw error
+          }
+
+          const shouldRetry =
+            attempt < MAX_CONNECT_RETRIES && !receivedPayload && isRetryableStreamError(error)
+
+          if (!shouldRetry) {
+            throw error
+          }
+
+          await sleep(250 * (attempt + 1))
+        }
+      }
+
+      return cloneState(pendingRef.current)
+    } finally {
+      mutatePending((draft) => {
+        draft.isStreaming = false
+      }, true)
+    }
   }
 
   return {
-    isStreaming,
-    currentContent,
-    currentThink,
-    thinkDone,
-    metrics,
+    isStreaming: state.isStreaming,
+    currentContent: state.currentContent,
+    currentThink: state.currentThink,
+    thinkDone: state.thinkDone,
+    metrics: state.metrics,
     sendMessage,
     resetStream,
   }

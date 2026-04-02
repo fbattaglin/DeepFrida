@@ -2,23 +2,25 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 
-import httpx
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from config import OLLAMA_BASE
-from db import init_db
+from db import close_db, init_db
 from routes.chat import router as chat_router
 from routes.conversations import router as conversations_router
 from routes.metrics import router as metrics_router
 from routes.models import router as models_router
 from routes.presets import router as presets_router
+from services.ollama_async import close_ollama_client, get_ollama_client, init_ollama_client
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     await init_db()
+    await init_ollama_client()
     yield
+    await close_ollama_client()
+    await close_db()
 
 
 app = FastAPI(title="DeepFrida API", lifespan=lifespan)
@@ -43,12 +45,5 @@ app.include_router(chat_router, prefix="/api")
 
 @app.get("/api/health")
 async def health() -> dict:
-    ollama = False
-    try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            response = await client.get(f"{OLLAMA_BASE}/api/tags")
-            ollama = response.status_code == 200
-    except httpx.HTTPError:
-        ollama = False
-
+    ollama = await get_ollama_client().health()
     return {"status": "ok", "ollama": ollama}

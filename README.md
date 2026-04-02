@@ -1,29 +1,57 @@
 # DeepFrida
 
-DeepFrida is a self-contained local LLM chat application for Ollama, built for a Mac Mini M4 Pro with 24 GB unified memory. It combines a FastAPI backend with a React + Vite + TypeScript frontend, stores application state in SQLite, and streams model output live with separate handling for reasoning blocks.
+DeepFrida is a self-contained local LLM workstation for Ollama, built for a Mac Mini M4 Pro with 24 GB unified memory. It pairs a FastAPI backend with a React 19 + TypeScript frontend, persists application state in SQLite, and streams reasoning and final answers separately so local models can be inspected, steered, and used interactively.
 
-## Features
+## Core Capabilities
 
-- multi-conversation chat UI
-- Ollama model listing and loaded-model visibility
-- model warmup endpoint
-- streaming chat over SSE
-- separate `<think>...</think>` reasoning display and storage
-- SQLite persistence for conversations, messages, and prompt presets
-- live metrics panel for RAM, TTFT, tok/s, and loaded-model state
-- DeepFrida logo integrated into the main app branding
+- multi-conversation local chat with persistent history
+- conversation-scoped system prompts and reusable prompt presets
+- live SSE streaming for both reasoning and final answer content
+- Ollama model listing, load visibility, and warmup flow
+- inference observability with TTFT, tok/s, RAM, and structured inference logs
+- interactive markdown rendering with Mermaid diagrams and LaTeX
+- browser-side Python sandbox for markdown code blocks via lazy-loaded Pyodide
+- responsive chat UX with virtualized history rendering and real-time think streaming
 
-## Structure
+## Architecture
 
 ```text
 DeepFrida/
-  backend/        FastAPI app, DB layer, API routes
-  frontend/       Vite React TypeScript UI
-  ollama_client/  copied local Ollama helper package
-  assets/         source logo and brand assets
-  start.sh        launches backend and frontend together
-  deepfrida.db    SQLite database created on first run
+  backend/
+    routes/                  FastAPI API surface
+    services/                async Ollama client, stream parser, observability
+    db.py                    SQLite pool, schema, repositories
+  frontend/
+    src/components/
+      markdown/              markdown, Mermaid, KaTeX, Python sandbox UI
+    src/hooks/               stream and metrics hooks
+    src/lib/                 frontend runtime helpers
+  ollama_client/             copied local helper package
+  assets/                    source branding
+  start.sh                   starts frontend and backend together
+  deepfrida.db               SQLite database
 ```
+
+## Backend Highlights
+
+- FastAPI + async streaming with `httpx.AsyncClient`
+- robust parser for reasoning emitted either as `<think>...</think>` or Ollama `thinking` fields
+- SQLite connection pool with WAL mode, `busy_timeout`, and indexes for conversation/message access
+- structured inference events including prompt preview, inference options, TTFT, tok/s, and completion status
+- `inference_runs` table for operational telemetry
+
+## Frontend Highlights
+
+- React 19 + TypeScript + Vite
+- CSS Modules, desktop-first layout, and persistent composer visibility
+- prompt UX that shows the active conversation prompt directly above the composer
+- warning when a prompt is changed on a conversation that already has history
+- `New chat with this prompt` shortcut for starting a fresh conversation with no prior context carryover
+- markdown rendering with syntax highlighting, Mermaid, KaTeX, and Python code execution in-browser
+
+## Prompt Behavior
+
+System prompts are stored per conversation. Selecting a preset updates the current conversation and applies to the next reply, but previous user and assistant turns in that same conversation still remain part of the model context. If you want the prompt to behave as a clean behavioral contract with no prior turns competing against it, start a fresh conversation using the same preset.
 
 ## Setup
 
@@ -41,11 +69,11 @@ cd frontend
 npm install
 ```
 
-The `ollama_client` package is copied into this project and used locally. It is not installed from pip and should not reference the original external ai-lab path at runtime.
+The `ollama_client` package is copied into this project and used locally. Runtime code should not reference the original external ai-lab path.
 
-## Start
+## Run
 
-Run both services:
+Start both services:
 
 ```bash
 ./start.sh
@@ -70,7 +98,7 @@ cd frontend
 npm run dev
 ```
 
-## API
+## API Surface
 
 Health:
 
@@ -119,11 +147,11 @@ data: {"type":"error","message":"..."}
 
 Streaming behavior:
 
-- user message is saved immediately
-- assistant answer tokens stream incrementally
-- reasoning inside `<think>...</think>` streams separately as `type="think"`
-- final assistant answer is stored without raw think tags
-- final message metrics are stored with the assistant message
+- user messages are persisted immediately
+- think content is streamed live token by token before the answer
+- answer content streams independently below the think block
+- assistant messages are stored as `content` plus `think_content`
+- inference metrics are emitted at the end of the stream and persisted for observability
 
 ## Persistence
 
@@ -133,16 +161,18 @@ SQLite file:
 deepfrida.db
 ```
 
-Persisted data:
+Persisted entities:
 
 - conversations
 - messages
 - presets
+- inference runs
 
-No browser localStorage is used for app persistence.
+SQLite may also create `deepfrida.db-wal` and `deepfrida.db-shm` while the app is running because WAL mode is enabled.
 
-## Notes
+## Developer Notes
 
 - Ollama must be reachable at `http://localhost:11434`
-- backend async HTTP calls use `httpx.AsyncClient`
-- frontend styling uses CSS modules and inline SVG only
+- backend async calls use `httpx.AsyncClient`
+- no browser `localStorage` is used for app state persistence
+- Python sandbox execution happens in the browser, not in the backend

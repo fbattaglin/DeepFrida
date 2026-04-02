@@ -1,73 +1,62 @@
-# React + TypeScript + Vite
+# DeepFrida Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This frontend is the interactive workstation for DeepFrida. It is built with React 19, TypeScript, Vite, CSS Modules, and a small set of focused rendering libraries for AI output.
 
-Currently, two official plugins are available:
+## What It Does
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- streams assistant reasoning and final answer separately in real time
+- renders markdown responses with headings, lists, code blocks, links, Mermaid diagrams, and LaTeX
+- executes Python snippets locally in the browser through a lazy-loaded Pyodide sandbox
+- keeps long conversations responsive with incremental stream state updates and a virtualized message list
+- exposes model, metrics, prompt presets, and conversation management in a desktop-first layout
 
-## React Compiler
+## Key Directories
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```text
+frontend/
+  src/
+    components/
+      markdown/              interactive markdown renderers and code blocks
+      VirtualMessageList.tsx virtualized chat list
+    hooks/
+      useStream.ts           POST + SSE stream handling
+      useMetrics.ts          polling for backend metrics
+    lib/
+      pyodideLoader.ts       lazy browser sandbox loader
+      themeMode.ts           theme helpers for renderers
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Prompt UX
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+System prompts are conversation-scoped. Selecting a preset updates the active conversation and applies to the next reply, but earlier turns in that same conversation still remain in context. When strict behavior is required, the UI exposes `New chat with this prompt` to start a fresh conversation with the selected preset and no prior conversation history.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Development
+
+Install dependencies:
+
+```bash
+npm install
 ```
+
+Run the dev server:
+
+```bash
+npm run dev
+```
+
+Build for production:
+
+```bash
+npm run build
+```
+
+## Main Dependencies
+
+- `react-markdown`
+- `remark-math`
+- `rehype-katex`
+- `mermaid`
+- `react-syntax-highlighter`
+- `lucide-react`
+
+Pyodide is loaded on demand the first time a Python code block is executed, so it does not sit in the main bundle hot path during initial app startup.

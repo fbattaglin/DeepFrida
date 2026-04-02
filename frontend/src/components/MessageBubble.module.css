@@ -56,29 +56,12 @@
   margin-bottom: 0;
 }
 
-.bubble code {
+.bubble :not(pre) > code {
   background: #1e1e1e;
   border: 1px solid #2a2a2a;
   border-radius: 4px;
   padding: 1px 5px;
   font-family: monospace;
-  font-size: 12px;
-  color: #c8c8c8;
-}
-
-.bubble pre {
-  background: #141414;
-  border: 1px solid #222;
-  border-radius: 6px;
-  padding: 12px 14px;
-  overflow-x: auto;
-  margin: 10px 0;
-}
-
-.bubble pre code {
-  background: none;
-  border: none;
-  padding: 0;
   font-size: 12px;
   color: #c8c8c8;
 }
@@ -144,6 +127,18 @@
   border: none;
   border-top: 1px solid #d8dfe9;
   margin: 12px 0;
+}
+
+.bubble :global(.katex) {
+  color: inherit;
+  font-size: 1.02em;
+}
+
+.bubble :global(.katex-display) {
+  margin: 14px 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 6px 0;
 }
 
 .metrics {

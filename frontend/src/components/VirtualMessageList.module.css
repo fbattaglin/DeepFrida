@@ -1,0 +1,10 @@
+.viewport {
+  height: 100%;
+  min-height: 0;
+  width: 100%;
+}
+
+.row {
+  padding-bottom: var(--message-gap, 20px);
+  contain: layout paint;
+}

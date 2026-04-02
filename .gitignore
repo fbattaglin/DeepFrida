@@ -2,6 +2,8 @@
 __pycache__/
 *.pyc
 deepfrida.db
+deepfrida.db-shm
+deepfrida.db-wal
 node_modules/
 frontend/node_modules/
 frontend/dist/

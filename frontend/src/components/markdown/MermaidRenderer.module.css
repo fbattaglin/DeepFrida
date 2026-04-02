@@ -1,0 +1,60 @@
+.shell {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0;
+  padding: 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--bg-card) 82%, transparent);
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--accent);
+  animation: pulse 1s ease-in-out infinite;
+}
+
+.diagram {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.diagram :global(svg) {
+  display: block;
+  min-width: min(520px, 100%);
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+}
+
+.error {
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--red) 28%, white);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--red) 10%, white);
+  color: var(--red);
+  font-size: 12px;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(0.92);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}

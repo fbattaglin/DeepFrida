@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { memo, useEffect, useRef } from 'react'
 
 import styles from './ThinkBlock.module.css'
 
@@ -8,7 +8,7 @@ interface ThinkBlockProps {
   isStreaming: boolean
 }
 
-export function ThinkBlock({ content, tokenCount, isStreaming }: ThinkBlockProps) {
+export const ThinkBlock = memo(function ThinkBlock({ content, tokenCount, isStreaming }: ThinkBlockProps) {
   const contentRef = useRef<HTMLDivElement>(null)
 
   if (!content.trim() && !isStreaming) {
@@ -43,4 +43,4 @@ export function ThinkBlock({ content, tokenCount, isStreaming }: ThinkBlockProps
       </div>
     </div>
   )
-}
+})

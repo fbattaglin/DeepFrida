@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 
 import type { Message } from '../types'
-import { MessageBubble } from './MessageBubble'
+import { VirtualMessageList } from './VirtualMessageList'
 import styles from './ChatWindow.module.css'
 
 interface ChatWindowProps {
   title: string
   messages: Message[]
   draftMessage: string
+  activeSystemPrompt: string
+  isPromptSaving: boolean
   isStreaming: boolean
   thinkDone: boolean
   canSend: boolean
@@ -20,6 +22,8 @@ export function ChatWindow({
   title,
   messages,
   draftMessage,
+  activeSystemPrompt,
+  isPromptSaving,
   isStreaming,
   thinkDone,
   canSend,
@@ -29,16 +33,11 @@ export function ChatWindow({
 }: ChatWindowProps) {
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleInput, setTitleInput] = useState(title)
-  const scrollerRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
     setTitleInput(title)
   }, [title])
-
-  useEffect(() => {
-    scrollerRef.current?.scrollTo({ top: scrollerRef.current.scrollHeight, behavior: 'smooth' })
-  }, [messages])
 
   useEffect(() => {
     const element = textareaRef.current
@@ -95,39 +94,44 @@ export function ChatWindow({
         </div>
       </header>
 
-      <div className={styles.messages} ref={scrollerRef}>
-        {messages.map((message, index) => (
-          <MessageBubble
-            key={message.id || `${message.role}-${index}`}
-            message={message}
-            isStreaming={isStreaming && index === messages.length - 1 && message.role === 'assistant'}
-            thinkDone={thinkDone}
-          />
-        ))}
-      </div>
+      <VirtualMessageList
+        className={styles.messages}
+        messages={messages}
+        isStreaming={isStreaming}
+        thinkDone={thinkDone}
+      />
 
       <footer className={styles.inputBar}>
-        <textarea
-          ref={textareaRef}
-          className={styles.textarea}
-          placeholder={canSend ? 'Message DeepFrida…' : 'Select or create a conversation…'}
-          value={draftMessage}
-          onChange={(event) => onDraftChange(event.target.value)}
-          onKeyDown={(event) => void handleKeyDown(event)}
-          rows={1}
-          disabled={!canSend}
-        />
-        <button
-          type="button"
-          className={styles.sendButton}
-          disabled={isStreaming || !canSend}
-          onClick={() => void onSend()}
-          aria-label="Send message"
-        >
-          <svg viewBox="0 0 24 24" className={styles.sendIcon}>
-            <path d="M4 11.5 20 4l-5.5 16-2.8-6.2L4 11.5Z" />
-          </svg>
-        </button>
+        <div className={styles.promptStrip}>
+          <span className={styles.promptLabel}>Conversation prompt</span>
+          <span className={styles.promptPreview}>{activeSystemPrompt || '(none)'}</span>
+          <span className={`${styles.promptStatus} ${isPromptSaving ? styles.promptSaving : styles.promptReady}`}>
+            {isPromptSaving ? 'Saving...' : activeSystemPrompt ? 'Active' : 'Inactive'}
+          </span>
+        </div>
+        <div className={styles.composerRow}>
+          <textarea
+            ref={textareaRef}
+            className={styles.textarea}
+            placeholder={canSend ? 'Message DeepFrida…' : 'Select or create a conversation…'}
+            value={draftMessage}
+            onChange={(event) => onDraftChange(event.target.value)}
+            onKeyDown={(event) => void handleKeyDown(event)}
+            rows={1}
+            disabled={!canSend}
+          />
+          <button
+            type="button"
+            className={styles.sendButton}
+            disabled={isStreaming || !canSend}
+            onClick={() => void onSend()}
+            aria-label="Send message"
+          >
+            <svg viewBox="0 0 24 24" className={styles.sendIcon}>
+              <path d="M4 11.5 20 4l-5.5 16-2.8-6.2L4 11.5Z" />
+            </svg>
+          </button>
+        </div>
       </footer>
     </section>
   )

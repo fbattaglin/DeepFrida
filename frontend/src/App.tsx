@@ -63,6 +63,17 @@ function machineContext(model: string, models: ModelInfo[]) {
   return models.find((entry) => entry.name === model)?.name ?? model
 }
 
+function promptPresetLabel(content: string, presets: Preset[]) {
+  if (!content.trim()) return null
+  return presets.find((preset) => preset.content === content)?.name ?? 'Custom prompt'
+}
+
+interface CreateConversationOptions {
+  model?: string
+  systemPrompt?: string
+  title?: string
+}
+
 export default function App() {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null)
@@ -77,6 +88,7 @@ export default function App() {
   const [notice, setNotice] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [deletingConversationId, setDeletingConversationId] = useState<string | null>(null)
+  const [savingPromptConversationId, setSavingPromptConversationId] = useState<string | null>(null)
 
   const {
     isStreaming,
@@ -92,21 +104,33 @@ export default function App() {
     () => conversations.find((conversation) => conversation.id === activeConversationId) ?? null,
     [activeConversationId, conversations],
   )
+  const activeSystemPrompt = activeConversation?.system_prompt ?? ''
 
   const baseMessages = activeConversationId ? messagesByConversation[activeConversationId] ?? [] : []
-  const displayMessages =
-    activeConversationId && isStreaming
-      ? [
-          ...baseMessages,
-          buildStreamingMessage(
-            activeConversationId,
-            currentContent,
-            currentThink,
-            streamMetrics.tok_per_sec,
-            streamMetrics.ttft_ms,
-          ),
-        ]
-      : baseMessages
+  const displayMessages = useMemo(() => {
+    if (!activeConversationId || !isStreaming) {
+      return baseMessages
+    }
+
+    return [
+      ...baseMessages,
+      buildStreamingMessage(
+        activeConversationId,
+        currentContent,
+        currentThink,
+        streamMetrics.tok_per_sec,
+        streamMetrics.ttft_ms,
+      ),
+    ]
+  }, [
+    activeConversationId,
+    baseMessages,
+    currentContent,
+    currentThink,
+    isStreaming,
+    streamMetrics.tok_per_sec,
+    streamMetrics.ttft_ms,
+  ])
 
   async function loadConversations(preferredActiveId?: string | null) {
     const data = await readJson<Conversation[]>(`${API_BASE}/conversations`)
@@ -158,20 +182,36 @@ export default function App() {
     return data
   }
 
-  async function createConversation(preferredModel?: string) {
-    const model = preferredModel ?? activeConversation?.model ?? models[0]?.name ?? 'deepseek-r1:14b'
+  async function createConversation(options?: CreateConversationOptions) {
+    const model = options?.model ?? activeConversation?.model ?? models[0]?.name ?? 'deepseek-r1:14b'
+    const systemPrompt = options?.systemPrompt?.trim() ?? ''
+    const title = options?.title ?? 'New conversation'
     const created = await readJson<Conversation>(`${API_BASE}/conversations`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        title: 'New conversation',
+        title,
         model,
-        system_prompt: '',
+        system_prompt: systemPrompt,
       }),
     })
     setConversations((previous) => [created, ...previous])
     setMessagesByConversation((previous) => ({ ...previous, [created.id]: [] }))
     setActiveConversationId(created.id)
+
+    if (systemPrompt) {
+      const successMessage = 'Started a new conversation with the selected prompt'
+      setNotice(successMessage)
+      window.setTimeout(() => setNotice((previous) => (previous === successMessage ? null : previous)), 2400)
+    }
+  }
+
+  function patchConversationState(conversationId: string, patch: Partial<Conversation>) {
+    setConversations((previous) =>
+      previous.map((conversation) =>
+        conversation.id === conversationId ? { ...conversation, ...patch } : conversation,
+      ),
+    )
   }
 
   async function handleWarmupModel(modelOverride?: string) {
@@ -213,7 +253,7 @@ export default function App() {
           loadPresets(),
         ])
         if (conversationList.length === 0) {
-          await createConversation(modelList[0]?.name ?? 'deepseek-r1:14b')
+          await createConversation({ model: modelList[0]?.name ?? 'deepseek-r1:14b' })
         }
       } catch (loadError) {
         setError(loadError instanceof Error ? loadError.message : 'Failed to load DeepFrida')
@@ -230,15 +270,22 @@ export default function App() {
   }, [activeConversationId, messagesByConversation])
 
   async function handleSend() {
-    if (!draftMessage.trim() || !activeConversation) return
+    if (!draftMessage.trim() || !activeConversationId) return
+
+    const conversationAtSend =
+      conversations.find((conversation) => conversation.id === activeConversationId) ?? null
+
+    if (!conversationAtSend) {
+      return
+    }
 
     setError(null)
     setNotice(null)
     setBusy(true)
 
     try {
-      if (!loadedModels.includes(activeConversation.model)) {
-        const warmedUp = await handleWarmupModel(activeConversation.model)
+      if (!loadedModels.includes(conversationAtSend.model)) {
+        const warmedUp = await handleWarmupModel(conversationAtSend.model)
         if (!warmedUp) {
           setBusy(false)
           return
@@ -252,7 +299,7 @@ export default function App() {
 
     const optimisticUser: Message = {
       id: `optimistic-user-${Date.now()}`,
-      conversation_id: activeConversation.id,
+      conversation_id: conversationAtSend.id,
       role: 'user',
       content: draftMessage.trim(),
       think_content: '',
@@ -261,7 +308,7 @@ export default function App() {
 
     setMessagesByConversation((previous) => ({
       ...previous,
-      [activeConversation.id]: [...(previous[activeConversation.id] ?? []), optimisticUser],
+      [conversationAtSend.id]: [...(previous[conversationAtSend.id] ?? []), optimisticUser],
     }))
 
     const messageToSend = draftMessage.trim()
@@ -269,16 +316,16 @@ export default function App() {
 
     try {
       await sendMessage({
-        conversationId: activeConversation.id,
+        conversationId: conversationAtSend.id,
         message: messageToSend,
-        model: activeConversation.model,
-        systemPrompt: activeConversation.system_prompt,
+        model: conversationAtSend.model,
+        systemPrompt: conversationAtSend.system_prompt,
         params,
       })
-      await Promise.all([loadConversation(activeConversation.id), loadConversations(), loadModels()])
+      await Promise.all([loadConversation(conversationAtSend.id), loadConversations(), loadModels()])
     } catch (streamError) {
       setError(streamError instanceof Error ? streamError.message : 'Streaming failed')
-      await loadConversation(activeConversation.id)
+      await loadConversation(conversationAtSend.id)
     } finally {
       setBusy(false)
     }
@@ -300,16 +347,34 @@ export default function App() {
 
   async function handleSystemPromptChange(content: string) {
     if (!activeConversation) return
-    const updated = await readJson<Conversation>(`${API_BASE}/conversations/${activeConversation.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ system_prompt: content }),
-    })
-    setConversations((previous) =>
-      previous.map((conversation) =>
-        conversation.id === activeConversation.id ? { ...conversation, ...updated } : conversation,
-      ),
-    )
+    const previousPrompt = activeConversation.system_prompt
+    const nextPrompt = content.trim()
+    const hasExistingMessages = (messagesByConversation[activeConversation.id]?.length ?? 0) > 0
+
+    patchConversationState(activeConversation.id, { system_prompt: nextPrompt })
+    setSavingPromptConversationId(activeConversation.id)
+    setError(null)
+
+    try {
+      const updated = await readJson<Conversation>(`${API_BASE}/conversations/${activeConversation.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ system_prompt: nextPrompt }),
+      })
+      patchConversationState(activeConversation.id, updated)
+      const successMessage = nextPrompt
+        ? hasExistingMessages
+          ? 'System prompt applied. Earlier turns still remain in context.'
+          : 'System prompt applied to this conversation'
+        : 'System prompt cleared'
+      setNotice(successMessage)
+      window.setTimeout(() => setNotice((previous) => (previous === successMessage ? null : previous)), 2200)
+    } catch (promptError) {
+      patchConversationState(activeConversation.id, { system_prompt: previousPrompt })
+      setError(promptError instanceof Error ? promptError.message : 'Failed to update system prompt')
+    } finally {
+      setSavingPromptConversationId(null)
+    }
   }
 
   async function handleModelChange(model: string) {
@@ -445,6 +510,8 @@ export default function App() {
           title={activeConversation?.title ?? 'DeepFrida'}
           messages={displayMessages}
           draftMessage={draftMessage}
+          activeSystemPrompt={activeSystemPrompt}
+          isPromptSaving={savingPromptConversationId === activeConversationId}
           isStreaming={isStreaming || busy}
           thinkDone={thinkDone}
           canSend={Boolean(activeConversation)}
@@ -489,8 +556,19 @@ export default function App() {
           {activeTab === 'prompts' ? (
             <PromptLibrary
               presets={presets}
-              activePrompt={activeConversation?.system_prompt ?? ''}
-              onSelect={(content) => void handleSystemPromptChange(content)}
+              activePrompt={activeSystemPrompt}
+              activePromptName={promptPresetLabel(activeSystemPrompt, presets)}
+              activeTurnCount={messagesByConversation[activeConversationId ?? '']?.length ?? 0}
+              isApplyingPrompt={savingPromptConversationId === activeConversationId}
+              onSelect={handleSystemPromptChange}
+              onClearActivePrompt={() => void handleSystemPromptChange('')}
+              onStartFreshWithPrompt={async (content) =>
+                createConversation({
+                  model: activeConversation?.model ?? models[0]?.name ?? 'deepseek-r1:14b',
+                  systemPrompt: content,
+                  title: 'Prompt conversation',
+                })
+              }
               onCreate={handleCreatePreset}
               onDelete={handleDeletePreset}
             />

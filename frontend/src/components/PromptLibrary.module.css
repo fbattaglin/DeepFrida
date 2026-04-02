@@ -20,9 +20,23 @@
   padding: 10px;
 }
 
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .sectionLabel,
-.preview {
+.preview,
+.status {
   font-size: 11px;
+}
+
+.scope,
+.promptName,
+.warning {
+  font-size: 10px;
 }
 
 .sectionLabel {
@@ -30,9 +44,31 @@
   margin-bottom: 4px;
 }
 
+.scope {
+  color: var(--text-faint);
+}
+
+.promptName {
+  margin: 8px 0 4px;
+  color: var(--text-primary);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
 .preview {
   color: var(--text-muted);
   line-height: 1.4;
+}
+
+.status {
+  margin-top: 8px;
+  color: var(--accent);
+}
+
+.warning {
+  margin-top: 8px;
+  color: var(--text-muted);
+  line-height: 1.5;
 }
 
 .item {
@@ -62,6 +98,11 @@
   text-align: left;
 }
 
+.select:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
 .name {
   margin-bottom: 4px;
   color: var(--text-primary);
@@ -73,6 +114,39 @@
   background: transparent;
   color: var(--text-faint);
   font-size: 11px;
+}
+
+.actions {
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+}
+
+.secondaryAction,
+.secondaryInline {
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-size: 11px;
+}
+
+.clear {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-faint);
+  font-size: 11px;
+}
+
+.clear:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.secondaryAction:disabled,
+.secondaryInline:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 .input,
